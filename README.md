@@ -6,7 +6,9 @@ back and once the post-Euro 2022 investment wave hit?**
 This project uses full-event StatsBomb data (open data, courtesy of Hudl
 StatsBomb) to test whether WSL team tactics and performance shifted across
 three distinct eras, using statistical testing, unsupervised clustering, and
-a supervised classifier then digs into the league's top 4 teams specifically with shot maps, xG trendlines, and radar comparisons.
+a supervised classifier then digs into the
+league's top 4 teams specifically with shot maps, xG trendlines, and radar
+comparisons.
 
 ## TL;DR result
 
@@ -14,7 +16,7 @@ A Random Forest trained to guess which era a team-season came from, using
 only 13 tactical/performance stats, hits **48.6% accuracy** (Leave-One-Out
 CV) against a **33.3% chance baseline**, and that gap is statistically real
 (permutation test **p = 0.005**, n=200 permutations). The signal isn't
-coming from shot quality or xG, those are flat across all three eras, it's
+coming from shot quality or xG, it's
 coming from **how teams move the ball and defend**:
 
 | Feature | 2018/19 | 2020/21 (COVID) | 2023/24 | ANOVA p |
@@ -27,7 +29,7 @@ coming from **how teams move the ball and defend**:
 | Possession % | ~50% | ~50% | ~50% | 1.00 (n.s.) |
 
 **Reading:** the post-2022 WSL isn't scoring more or dominating possession
-more. It's pressing much harder (+23% pressures/90) and playing shorter,
+more, it's pressing much harder (+23% pressures/90) and playing shorter,
 more accurate, more controlled possession (pass length down ~2.4m,
 completion up 8 points). That's consistent with the professionalization
 story (better fitness/conditioning, more coaching investment, more athletic
@@ -52,6 +54,34 @@ On top of the league-wide era comparison, `src/plot_top4.py` pulls the
 - **`outputs/top4_radar.png`** — each top-4 team's tactical profile
   (possession, passing, pressing) plotted against the league average on one
   radar, to see how the best teams deviate from the pack.
+
+## Passing networks: structure, not just volume
+
+Every stat above is a rate or a total and none of them can show *how* the ball
+actually moved through a team. `src/pass_networks.py` builds an actual
+passing network per match (nodes = players positioned at their average
+touch location, edges = completed passes between them, weighted by count),
+then computes graph-structure metrics per team-era:
+
+- **Betweenness centrality** — how much passing flow runs through a small
+  set of hub players vs. being spread across the team.
+- **Centralization** — a single network-level number for the same idea: high
+  = one or two players the team funnels through, low = distributed
+  possession.
+- **Density** and **clustering** — how interconnected the passing network is
+  overall, and how much triangular ball-circulation there is between nearby
+  players.
+
+These get merged onto the main feature table (`analyze.py`'s
+`merge_network_features`) and run through the same one-way ANOVA as the
+tactical stats, in `outputs/network_anova_results.csv`, direct test of
+whether the post-2022 WSL didn't just press harder and play shorter passes,
+but also *distributed* possession more evenly across the team, consistent
+with less reliance on one or two standout ball-players.
+
+`outputs/top4_pass_networks.png` shows the actual network diagrams for each
+top-4 team's highest-passing-volume match in 2023/24 drawn on a pitch,
+node size by involvement, edge thickness by pass count between that pair.
 
 ## Why this dataset / question
 
@@ -92,13 +122,20 @@ post-Euro-2022-boom with record investment and attendance (2023/24).
    - Shot maps (via `mplsoccer`), rolling xG trendlines, and a
      league-average-vs-top-4 radar chart, all built from the same event
      data and feature table as the league-wide analysis.
+5. **`src/pass_networks.py`** — builds per-match passing networks with
+   `networkx`, positioning each player by their average passing/receiving
+   location and weighting edges by completed-pass count. Rolls per-match
+   betweenness centrality, centralization, density, and clustering up into
+   team-era features (`data/network_features.csv`), which `analyze.py`
+   merges onto the main feature table and re-runs through ANOVA. Also draws
+   the actual network diagrams for each top-4 team's busiest match of the
+   season.
 
 ## Honest limitations
 
 - **n=35 team-seasons** (11–12 teams × 3 seasons). This is small. LOO-CV
   and the permutation test exist specifically to guard against
-  small-sample overfitting claims, read the accuracy number as "there is
-  real signal here," not as "this model is production-grade."
+  small-sample overfitting claims.
 - This is **observational**, not causal. The post-2022 shift is correlated
   with the investment/popularity boom, but I can't rule out other
   confounds (rule changes, squad turnover, general league-wide tactical
@@ -109,6 +146,11 @@ post-Euro-2022-boom with record investment and attendance (2023/24).
 - The top-4 standings table is computed from match results only (3/1/0
   points), so it reflects final league position for 2023/24, not a
   reconstruction of the exact live table at any point mid-season.
+- Passing-network centrality metrics prune fringe nodes below a
+  `min_passes` threshold (default 3) to keep substitute cameos from
+  skewing centralization, a judgment call that trades off excluding real
+  low-volume role players (e.g. a wing-back on a low-possession team)
+  against excluding noise from late substitutes.
 
 ## Reproducing this
 
@@ -116,7 +158,8 @@ post-Euro-2022-boom with record investment and attendance (2023/24).
 pip install -r requirements.txt
 python src/collect_data.py     # ~5-8 min, pulls ~1.3M events from StatsBomb open data
 python src/build_features.py   # builds data/team_season_features.csv
-python src/analyze.py          # runs all stats/ML, writes core outputs to outputs/
+python src/pass_networks.py    # builds data/network_features.csv + top4 network diagrams
+python src/analyze.py          # runs all stats/ML (incl. network ANOVA), writes outputs to outputs/
 python src/plot_top4.py        # top-4 shot maps, xG trend, and radar
 ```
 
@@ -128,10 +171,13 @@ src/
   build_features.py    # raw events -> team-season feature table
   analyze.py            # ANOVA, PCA/KMeans, Random Forest + permutation test
   plot_top4.py          # top-4 shot maps, xG trendlines, radar vs league average
+  pass_networks.py      # passing-network graphs, centrality/structure features
 data/
   team_season_features.csv   # final feature table (35 rows x 13 features)
+  network_features.csv       # per-team-era passing-network structure stats
 outputs/
   anova_results.csv
+  network_anova_results.csv
   cluster_assignments.csv
   classifier_report.txt
   era_comparison_boxplots.png
@@ -140,6 +186,7 @@ outputs/
   top4_shotmaps.png
   top4_xg_trend.png
   top4_radar.png
+  top4_pass_networks.png
 ```
 
 ## Data source & attribution
