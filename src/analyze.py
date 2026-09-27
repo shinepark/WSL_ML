@@ -40,7 +40,7 @@ FEATURE_COLS = [
     "progressive_passes_per_90",
     "avg_pass_length",
     "long_ball_pct",
-    "pressure_per_90",
+    "pressures_per_90",
     "shots_per_90",
     "xg_per_90",
     "xg_per_shot",
@@ -106,7 +106,7 @@ def run_clustering(df: pd.DataFrame) -> pd.DataFrame:
     )
     ax.set_title("WSL Team Seasons: PCA Projection Colored by Era")
     ax.set_xlabel(f"PC1 ({pca.explained_variance_ratio_[0]:.1%} var)")
-    ax.set_xlabel(f"PC2 ({pca.explained_variance_ratio_[1]:.1%} var)")
+    ax.set_ylabel(f"PC2 ({pca.explained_variance_ratio_[1]:.1%} var)")
     fig.tight_layout()
     fig.savefig(OUT_DIR / "pca_clusters.png", dpi=150)
     plt.close(fig)
@@ -121,7 +121,7 @@ def run_classifier(df: pd.DataFrame):
     """
 
     X = df[FEATURE_COLS].to_numpy(dtype=float)
-    y = df["seasons"].astype(str).to_numpy()
+    y = df["season"].astype(str).to_numpy()
 
     clf = RandomForestClassifier(n_estimators=300, random_state=42, max_depth=4)
 

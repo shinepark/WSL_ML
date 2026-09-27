@@ -67,7 +67,7 @@ def main():
         matches["era"] = era_label
         match_frames.append(matches)
         matches.to_parquet(DATA_DIR / f"matches_{era_label}.parquet")
-        print(f"Matches: {len(events)}")
+        print(f"Matches: {len(matches)}")
 
         events = fetch_events_for_season(season_id, era_label)
         events.to_parquet(DATA_DIR / f"events_{era_label}.parquet")

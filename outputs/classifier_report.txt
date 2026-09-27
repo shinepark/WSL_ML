@@ -1,0 +1,20 @@
+WSL Era Classifier (Random Forest, Leave One Out CV)
+=======================================================
+n = 35 team seasons across 3 eras
+Leave One Out accuracy: 0.486 (chance level = 0.333)
+5 fold permutation test score: 0.629, p = 0.0050
+
+Top features by importance:
+ pressures_per_90               0.175
+ avg_pass_length                0.147
+ long_ball_pct                  0.139
+ progressive_passes_per_90      0.095
+ dribbles_per_90                0.084
+ pass_completion_pct            0.061
+ xg_per_shot                    0.061
+ avg_carry_length               0.051
+ possession_pct                 0.041
+ xg_per_90                      0.041
+ carries_per_90                 0.039
+ passes_per_90                  0.034
+ shots_per_90                   0.033
